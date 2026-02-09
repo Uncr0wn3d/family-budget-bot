@@ -100,7 +100,7 @@ async def add_expense(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Формируем ответ
     response = f"✅ Добавлено:\n"
-    response += f"💰 {amount:.2f} ₽\n"
+    response += f"💰 {amount:.2f} zł\n"
     response += f"📂 {category}\n"
     response += f"📝 {description}\n"
     response += f"👤 {username}"
@@ -152,14 +152,14 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Формируем ответ
     response = f"📊 **Статистика: {period_name}**\n\n"
-    response += f"💰 **Общая сумма:** {total:.2f} ₽\n\n"
+    response += f"💰 **Общая сумма:** {total:.2f} zł\n\n"
     
     # По категориям
     if by_category:
         response += "📂 **По категориям:**\n"
         for category, amount in by_category:
             percentage = (amount / total * 100) if total > 0 else 0
-            response += f"  • {category}: {amount:.2f} ₽ ({percentage:.1f}%)\n"
+            response += f"  • {category}: {amount:.2f} zł ({percentage:.1f}%)\n"
         response += "\n"
     
     # По пользователям
@@ -167,7 +167,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response += "👥 **По пользователям:**\n"
         for user, amount in by_user:
             percentage = (amount / total * 100) if total > 0 else 0
-            response += f"  • {user}: {amount:.2f} ₽ ({percentage:.1f}%)\n"
+            response += f"  • {user}: {amount:.2f} zł ({percentage:.1f}%)\n"
     
     # Кнопки для выбора периода
     keyboard = [
@@ -210,13 +210,13 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     who_paid_more = user2 if amount1 < amount2 else user1
     
     response = f"💰 **Баланс**\n\n"
-    response += f"👤 {user1}: {amount1:.2f} ₽\n"
-    response += f"👤 {user2}: {amount2:.2f} ₽\n\n"
-    response += f"📊 Всего: {total:.2f} ₽\n"
-    response += f"⚖️ Поровну: {half:.2f} ₽ каждому\n\n"
+    response += f"👤 {user1}: {amount1:.2f} zł\n"
+    response += f"👤 {user2}: {amount2:.2f} zł\n\n"
+    response += f"📊 Всего: {total:.2f} zł\n"
+    response += f"⚖️ Поровну: {half:.2f} zł каждому\n\n"
     
     if difference > 1:  # Если разница больше 1 рубля
-        response += f"💸 **{who_owes}** должен **{who_paid_more}**: {difference/2:.2f} ₽"
+        response += f"💸 **{who_owes}** должен **{who_paid_more}**: {difference/2:.2f} zł"
     else:
         response += "✅ Вы квиты! 🎉"
     
@@ -249,7 +249,7 @@ async def history(update: Update, context: ContextTypes.DEFAULT_TYPE):
         date_str = date_obj.strftime("%d.%m %H:%M")
         
         response += f"🕐 {date_str}\n"
-        response += f"💰 {amount:.2f} ₽ | 📂 {category}\n"
+        response += f"💰 {amount:.2f} zł | 📂 {category}\n"
         response += f"📝 {description} | 👤 {username}\n"
         response += f"ID: {exp_id}\n\n"
     
@@ -339,20 +339,20 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Формируем ответ
         response = f"📊 **Статистика: {period_name}**\n\n"
-        response += f"💰 **Общая сумма:** {total:.2f} ₽\n\n"
+        response += f"💰 **Общая сумма:** {total:.2f} zł\n\n"
         
         if by_category:
             response += "📂 **По категориям:**\n"
             for category, amount in by_category:
                 percentage = (amount / total * 100) if total > 0 else 0
-                response += f"  • {category}: {amount:.2f} ₽ ({percentage:.1f}%)\n"
+                response += f"  • {category}: {amount:.2f} zł ({percentage:.1f}%)\n"
             response += "\n"
         
         if by_user:
             response += "👥 **По пользователям:**\n"
             for user, amount in by_user:
                 percentage = (amount / total * 100) if total > 0 else 0
-                response += f"  • {user}: {amount:.2f} ₽ ({percentage:.1f}%)\n"
+                response += f"  • {user}: {amount:.2f} zł ({percentage:.1f}%)\n"
         
         # Те же кнопки
         keyboard = [
