@@ -185,6 +185,32 @@ class Database:
         
         return result
     
+    def get_by_user_and_category(self, start_date: datetime = None) -> List[Tuple[str, str, float]]:
+        """Получить сумму по пользователям и категориям"""
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+        
+        if start_date:
+            cursor.execute('''
+                SELECT username, category, SUM(amount)
+                FROM expenses
+                WHERE date >= ?
+                GROUP BY username, category
+                ORDER BY username, category
+            ''', (start_date.isoformat(),))
+        else:
+            cursor.execute('''
+                SELECT username, category, SUM(amount)
+                FROM expenses
+                GROUP BY username, category
+                ORDER BY username, category
+            ''')
+        
+        result = cursor.fetchall()
+        conn.close()
+        
+        return result
+    
     def get_expense_by_id(self, expense_id: int) -> Optional[Tuple]:
         """Получить расход по ID"""
         conn = sqlite3.connect(self.db_file)

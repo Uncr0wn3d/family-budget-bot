@@ -5,7 +5,7 @@ Telegram бот для учета семейного бюджета
 
 import logging
 from datetime import datetime, timedelta
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -32,6 +32,42 @@ ALLOWED_USERS = []  # Оставьте пустым, заполнится авт
 db = Database()
 
 
+def get_salary_period():
+    """
+    Вычисляет начало текущего зарплатного периода.
+    ЗП 10 числа (или раньше если выходной/праздник)
+    Рабочие дни: Ср-Сб (воскресенье начало недели)
+    """
+    now = datetime.now()
+    
+    # Функция для проверки является ли день выходным (Сб=5, Вс=6)
+    def is_weekend(date):
+        return date.weekday() >= 5
+    
+    # Функция для нахождения рабочего дня назад от 10 числа
+    def get_salary_day(year, month):
+        salary_date = datetime(year, month, 10)
+        
+        # Если 10 число - выходной, идем назад до рабочего дня
+        while is_weekend(salary_date):
+            salary_date = salary_date - timedelta(days=1)
+        
+        return salary_date
+    
+    # Получаем день ЗП текущего месяца
+    current_salary_day = get_salary_day(now.year, now.month)
+    
+    # Если сегодня до дня ЗП, то период начался в прошлом месяце
+    if now.date() < current_salary_day.date():
+        if now.month == 1:
+            prev_salary_day = get_salary_day(now.year - 1, 12)
+        else:
+            prev_salary_day = get_salary_day(now.year, now.month - 1)
+        return prev_salary_day
+    else:
+        return current_salary_day
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /start - приветствие и инструкция"""
     user_id = update.effective_user.id
@@ -49,21 +85,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 📝 **Добавить расход:**
 Просто напишите сумму и описание, например:
-• 500 ашан
-• 1200 такси
+• 500 biedronka
+• 1200 taxi
 • 350 кофе
 
-Я автоматически определю категорию! 🎯
+Категории: 🍔 Еда, 📦 Прочее
 
-📊 **Команды:**
-/stats - посмотреть статистику
-/history - история трат (можно редактировать)
-/balance - баланс между вами
-/categories - список категорий
+📊 **Используйте кнопки ниже** для управления ботом
 
-Зарегистрированные пользователи: {len(ALLOWED_USERS)}/2
+Ваш ID: `{user_id}`
+Зарегистрированные: {len(ALLOWED_USERS)}/2
 """
-    await update.message.reply_text(welcome_text)
+    
+    # Создаем кнопочное меню
+    from telegram import KeyboardButton, ReplyKeyboardMarkup
+    
+    keyboard = [
+        [KeyboardButton("📊 Статистика"), KeyboardButton("💰 Баланс")],
+        [KeyboardButton("📝 История"), KeyboardButton("🔍 Мой ID")],
+        [KeyboardButton("📂 Категории"), KeyboardButton("ℹ️ Помощь")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    
+    await update.message.reply_text(welcome_text, reply_markup=reply_markup, parse_mode='Markdown')
 
 
 async def add_expense(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -115,6 +159,25 @@ async def add_expense(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(response, reply_markup=reply_markup)
+    
+    # Отправляем уведомление второму пользователю
+    other_user_id = None
+    for uid in ALLOWED_USERS:
+        if uid != user_id:
+            other_user_id = uid
+            break
+    
+    if other_user_id:
+        notification = f"🔔 Новый расход:\n"
+        notification += f"👤 {username}\n"
+        notification += f"💰 {amount:.2f} zł\n"
+        notification += f"📂 {category}\n"
+        notification += f"📝 {description}"
+        
+        try:
+            await context.bot.send_message(chat_id=other_user_id, text=notification)
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление: {e}")
 
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -125,9 +188,9 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ У вас нет доступа к этому боту.")
         return
     
-    # Получаем период (по умолчанию текущий месяц)
-    period = 'month'
-    if context.args and context.args[0] in ['week', 'month', 'year', 'all']:
+    # Получаем период (по умолчанию зарплатный период)
+    period = 'salary'
+    if context.args and context.args[0] in ['week', 'month', 'year', 'all', 'salary']:
         period = context.args[0]
     
     # Определяем даты
@@ -141,6 +204,9 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif period == 'year':
         start_date = now.replace(month=1, day=1)
         period_name = "Текущий год"
+    elif period == 'salary':
+        start_date = get_salary_period()
+        period_name = f"С {start_date.strftime('%d.%m.%Y')} (зарплатный период)"
     else:  # all
         start_date = None
         period_name = "За все время"
@@ -172,11 +238,11 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Кнопки для выбора периода
     keyboard = [
         [
+            InlineKeyboardButton("ЗП период", callback_data="stats_salary"),
             InlineKeyboardButton("Неделя", callback_data="stats_week"),
-            InlineKeyboardButton("Месяц", callback_data="stats_month"),
         ],
         [
-            InlineKeyboardButton("Год", callback_data="stats_year"),
+            InlineKeyboardButton("Месяц", callback_data="stats_month"),
             InlineKeyboardButton("Все время", callback_data="stats_all"),
         ]
     ]
@@ -186,39 +252,74 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Показать баланс между пользователями"""
+    """Показать баланс между пользователями с разбивкой по категориям"""
     user_id = update.effective_user.id
     
     if ALLOWED_USERS and user_id not in ALLOWED_USERS:
         await update.message.reply_text("❌ У вас нет доступа к этому боту.")
         return
     
-    by_user = db.get_by_user()
+    # Получаем детальную статистику по пользователям и категориям
+    by_user_category = db.get_by_user_and_category()
     
-    if len(by_user) < 2:
+    if not by_user_category:
         await update.message.reply_text("📊 Пока нет данных для расчета баланса.")
         return
     
-    user1, amount1 = by_user[0]
-    user2, amount2 = by_user[1]
+    # Группируем данные
+    user_totals = {}
+    category_totals = {'Еда': 0, 'Прочее': 0}
+    user_category_amounts = {}
     
-    total = amount1 + amount2
-    half = total / 2
+    for username, category, amount in by_user_category:
+        # Общие суммы по пользователям
+        if username not in user_totals:
+            user_totals[username] = 0
+        user_totals[username] += amount
+        
+        # Суммы по категориям
+        category_totals[category] += amount
+        
+        # Суммы по пользователям и категориям
+        key = (username, category)
+        user_category_amounts[key] = amount
     
-    difference = abs(amount1 - amount2)
-    who_owes = user1 if amount1 < amount2 else user2
-    who_paid_more = user2 if amount1 < amount2 else user1
-    
+    # Формируем ответ
     response = f"💰 **Баланс**\n\n"
-    response += f"👤 {user1}: {amount1:.2f} zł\n"
-    response += f"👤 {user2}: {amount2:.2f} zł\n\n"
-    response += f"📊 Всего: {total:.2f} zł\n"
-    response += f"⚖️ Поровну: {half:.2f} zł каждому\n\n"
     
-    if difference > 1:  # Если разница больше 1 рубля
-        response += f"💸 **{who_owes}** должен **{who_paid_more}**: {difference/2:.2f} zł"
-    else:
-        response += "✅ Вы квиты! 🎉"
+    # Показываем разбивку по категориям для каждого пользователя
+    users = list(user_totals.keys())
+    
+    for category in ['Еда', 'Прочее']:
+        response += f"📂 **{category}:**\n"
+        for user in users:
+            amount = user_category_amounts.get((user, category), 0)
+            response += f"  👤 {user}: {amount:.2f} zł\n"
+        response += f"  📊 Всего: {category_totals[category]:.2f} zł\n\n"
+    
+    # Общие итоги
+    total = sum(user_totals.values())
+    response += f"💵 **Итого:**\n"
+    for user, amount in user_totals.items():
+        percentage = (amount / total * 100) if total > 0 else 0
+        response += f"  👤 {user}: {amount:.2f} zł ({percentage:.1f}%)\n"
+    
+    response += f"\n📊 Всего потрачено: {total:.2f} zł\n"
+    
+    # Расчет кто кому должен
+    if len(users) == 2:
+        half = total / 2
+        user1, user2 = users[0], users[1]
+        amount1, amount2 = user_totals[user1], user_totals[user2]
+        
+        difference = abs(amount1 - amount2)
+        
+        if difference > 1:
+            who_owes = user1 if amount1 < amount2 else user2
+            who_paid_more = user2 if amount1 < amount2 else user1
+            response += f"\n💸 **{who_owes}** должен **{who_paid_more}**: {difference/2:.2f} zł"
+        else:
+            response += "\n✅ Вы квиты! 🎉"
     
     await update.message.reply_text(response, parse_mode='Markdown')
 
@@ -286,22 +387,56 @@ async def show_categories(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📂 **Категории и ключевые слова:**
 
 🍔 **Еда**
-продукты, еда, ашан, лидл, магнит, пятерочка, перекресток, супермаркет, рынок, овощи, мясо, хлеб
-
-🚗 **Транспорт**
-такси, бензин, заправка, метро, автобус, транспорт, яндекс, uber
-
-🎉 **Развлечения**
-кино, театр, ресторан, кафе, бар, развлечения, парк, концерт
-
-💊 **Здоровье**
-аптека, врач, лекарства, больница, анализы, здоровье
-
-🏠 **Дом**
-квартира, коммуналка, ремонт, мебель, икея, леруа
+продукты, еда, biedronka, lidl, kaufland, zabka, auchan, carrefour, dino, netto, ресторан, кафе, пицца, доставка
 
 📦 **Прочее**
-Все остальное
+Все остальное (транспорт, одежда, здоровье, развлечения и т.д.)
+"""
+    await update.message.reply_text(response, parse_mode='Markdown')
+
+
+async def my_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать ID пользователя"""
+    user_id = update.effective_user.id
+    username = update.effective_user.first_name or "Пользователь"
+    
+    response = f"🆔 **Ваша информация:**\n\n"
+    response += f"👤 Имя: {username}\n"
+    response += f"🔢 Telegram ID: `{user_id}`\n\n"
+    
+    if ALLOWED_USERS:
+        if user_id in ALLOWED_USERS:
+            response += "✅ У вас есть доступ к боту"
+        else:
+            response += "❌ У вас нет доступа к боту"
+    
+    await update.message.reply_text(response, parse_mode='Markdown')
+
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Показать помощь"""
+    response = """
+ℹ️ **Помощь по боту**
+
+📝 **Добавить расход:**
+Просто напишите: `сумма описание`
+Примеры:
+• 50 biedronka
+• 120 taxi
+• 35.50 кафе
+
+📊 **Кнопки:**
+• Статистика - траты за зарплатный период
+• Баланс - кто сколько потратил
+• История - последние траты
+• Мой ID - ваш Telegram ID
+• Категории - список категорий
+
+🗓 **Зарплатный период:**
+Считается с 10 числа (или ближайшего рабочего дня)
+
+💡 **Уведомления:**
+Когда один добавляет расход, второй получает уведомление!
 """
     await update.message.reply_text(response, parse_mode='Markdown')
 
@@ -328,6 +463,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif period == 'year':
             start_date = now.replace(month=1, day=1)
             period_name = "Текущий год"
+        elif period == 'salary':
+            start_date = get_salary_period()
+            period_name = f"С {start_date.strftime('%d.%m.%Y')} (зарплатный период)"
         else:  # all
             start_date = None
             period_name = "За все время"
@@ -357,11 +495,11 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Те же кнопки
         keyboard = [
             [
+                InlineKeyboardButton("ЗП период", callback_data="stats_salary"),
                 InlineKeyboardButton("Неделя", callback_data="stats_week"),
-                InlineKeyboardButton("Месяц", callback_data="stats_month"),
             ],
             [
-                InlineKeyboardButton("Год", callback_data="stats_year"),
+                InlineKeyboardButton("Месяц", callback_data="stats_month"),
                 InlineKeyboardButton("Все время", callback_data="stats_all"),
             ]
         ]
@@ -396,14 +534,36 @@ def main():
     application.add_handler(CommandHandler("history", history))
     application.add_handler(CommandHandler("delete", delete_expense))
     application.add_handler(CommandHandler("categories", show_categories))
+    application.add_handler(CommandHandler("myid", my_id))
+    application.add_handler(CommandHandler("help", help_command))
     
     # Обработчик кнопок
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    # Обработчик текстовых сообщений (добавление расходов)
+    # Обработчик кнопок меню (текстовые сообщения)
+    async def menu_button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        text = update.message.text
+        
+        if text == "📊 Статистика":
+            await stats(update, context)
+        elif text == "💰 Баланс":
+            await balance(update, context)
+        elif text == "📝 История":
+            await history(update, context)
+        elif text == "🔍 Мой ID":
+            await my_id(update, context)
+        elif text == "📂 Категории":
+            await show_categories(update, context)
+        elif text == "ℹ️ Помощь":
+            await help_command(update, context)
+        else:
+            # Если не кнопка меню, обрабатываем как добавление расхода
+            await add_expense(update, context)
+    
+    # Обработчик текстовых сообщений
     application.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
-        add_expense
+        menu_button_handler
     ))
     
     # Запускаем бота

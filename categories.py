@@ -5,40 +5,20 @@
 # Словарь категорий и ключевых слов
 CATEGORIES = {
     'Еда': [
-        'продукты', 'еда', 'ашан', 'лидл', 'магнит', 'пятерочка', 'перекресток',
+        # Русские магазины
+        'продукты', 'еда', 'ашан', 'магнит', 'пятерочка', 'перекресток',
         'супермаркет', 'рынок', 'овощи', 'фрукты', 'мясо', 'хлеб', 'молоко',
-        'grocery', 'food', 'market', 'kaufland', 'biedronka', 'carrefour',
-        'zabka', 'auchan', 'tesco', 'lidl'
-    ],
-    'Транспорт': [
-        'такси', 'бензин', 'заправка', 'метро', 'автобус', 'транспорт',
-        'яндекс', 'uber', 'bolt', 'машина', 'авто', 'парковка', 'билет',
-        'taxi', 'gas', 'fuel', 'metro', 'bus', 'train', 'ticket', 'parking'
-    ],
-    'Развлечения': [
-        'кино', 'театр', 'ресторан', 'кафе', 'бар', 'развлечения', 'парк',
-        'концерт', 'музей', 'клуб', 'пицца', 'суши', 'доставка',
-        'cinema', 'restaurant', 'cafe', 'bar', 'club', 'pizza', 'sushi',
-        'entertainment', 'movie', 'concert', 'delivery'
-    ],
-    'Здоровье': [
-        'аптека', 'врач', 'лекарства', 'больница', 'анализы', 'здоровье',
-        'стоматолог', 'витамины', 'таблетки', 'медицина',
-        'pharmacy', 'doctor', 'medicine', 'hospital', 'health', 'pills'
-    ],
-    'Дом': [
-        'квартира', 'коммуналка', 'ремонт', 'мебель', 'икея', 'леруа',
-        'свет', 'вода', 'газ', 'интернет', 'аренда', 'уборка',
-        'rent', 'utilities', 'furniture', 'ikea', 'home', 'apartment',
-        'internet', 'electricity', 'water', 'cleaning'
-    ],
-    'Одежда': [
-        'одежда', 'обувь', 'магазин', 'шоппинг', 'зара', 'hm',
-        'clothes', 'shoes', 'shopping', 'zara', 'fashion', 'wear'
-    ],
-    'Связь': [
-        'телефон', 'мобильный', 'связь', 'тариф', 'мтс', 'билайн', 'мегафон',
-        'phone', 'mobile', 'cellular', 'plan', 'subscription'
+        # Польские магазины
+        'biedronka', 'lidl', 'kaufland', 'zabka', 'żabka', 'auchan', 'carrefour',
+        'dino', 'netto', 'intermarche', 'stokrotka', 'topaz', 'polomarket',
+        'lewiatan', 'delikatesy', 'alma',
+        # Общие
+        'grocery', 'food', 'market', 'sklep', 'zakupy',
+        # Заведения общепита
+        'ресторан', 'кафе', 'бар', 'пицца', 'суши', 'доставка',
+        'restauracja', 'kawiarnia', 'pub', 'pizzeria', 'kebab', 
+        'mcdonald', 'kfc', 'pizza hut', 'glovo', 'pyszne.pl', 'uber eats',
+        'restaurant', 'cafe', 'pizza', 'sushi', 'delivery'
     ]
 }
 
