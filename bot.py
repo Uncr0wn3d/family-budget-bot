@@ -29,7 +29,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ID разрешенных пользователей (замените на ваши Telegram ID)
-ALLOWED_USERS = []  # Оставьте пустым, заполнится автоматически при первом /start
+ALLOWED_USERS = [399447361,416881967]  # Оставьте пустым, заполнится автоматически при первом /start
 
 db = Database()
 
