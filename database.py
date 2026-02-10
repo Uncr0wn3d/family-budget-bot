@@ -3,14 +3,15 @@
 """
 
 import sqlite3
+import os
 from datetime import datetime
 from typing import List, Tuple, Optional
 
-
 class Database:
     def __init__(self, db_file='expenses.db'):
-        """Инициализация БД"""
-        self.db_file = db_file
+        # Используем абсолютный путь, чтобы Python всегда находил файл
+        basedir = os.path.abspath(os.path.dirname(__file__))
+        self.db_file = os.path.join(basedir, db_file)
         self.init_db()
     
     def init_db(self):
