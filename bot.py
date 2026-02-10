@@ -18,6 +18,8 @@ import re
 from database import Database
 from categories import determine_category
 import os
+from threading import Thread
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Настройка логирования
 logging.basicConfig(
@@ -30,6 +32,27 @@ logger = logging.getLogger(__name__)
 ALLOWED_USERS = []  # Оставьте пустым, заполнится автоматически при первом /start
 
 db = Database()
+
+
+# HTTP сервер для Render (чтобы не падал Web Service)
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.end_headers()
+        self.wfile.write(b'Bot is running!')
+    
+    def log_message(self, format, *args):
+        pass  # Отключаем логи HTTP
+
+
+def start_health_check_server():
+    """Запускает HTTP-сервер для Render"""
+    port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), HealthCheckHandler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    logger.info(f"✅ Health check server started on port {port}")
 
 
 def get_salary_period():
@@ -518,6 +541,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Запуск бота"""
+    # Запускаем HTTP-сервер для Render (чтобы не падал)
+    start_health_check_server()
+    
     # Получаем токен из переменных окружения
     token = os.getenv('TELEGRAM_BOT_TOKEN')
     
