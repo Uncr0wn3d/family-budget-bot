@@ -2,6 +2,30 @@
 Telegram бот для учета семейного бюджета
 Для двух пользователей с автоматическим определением категорий
 """
+from aiohttp import web
+import asyncio
+
+# Функция-обработчик для проверки, что бот жив
+async def handle(request):
+    return web.Response(text="Bot is running!")
+
+async def main():
+    # Создаем веб-приложение
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    # Render передает порт в переменную окружения PORT
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    
+    # Запускаем веб-сервер фоном
+    await site.start()
+    
+    # Далее ваш привычный запуск бота
+    # await dp.start_polling(bot)
 
 import logging
 from datetime import datetime, timedelta
